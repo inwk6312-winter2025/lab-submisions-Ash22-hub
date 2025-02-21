@@ -1,32 +1,23 @@
-__all__ = []
+import os
+import errno
+import sys
 
-__metaclass__ = type
+from .extern import six
 
 
-try:
-    # Python >=3.2
-    from tempfile import TemporaryDirectory
-except ImportError:
-    import shutil
-    import tempfile
+def _makedirs_31(path, exist_ok=False):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if not exist_ok or exc.errno != errno.EEXIST:
+            raise
 
-    class TemporaryDirectory:
-        """
-        Very simple temporary directory context manager.
-        Will try to delete afterward, but will also ignore OS and similar
-        errors on deletion.
-        """
 
-        def __init__(self, **kwargs):
-            self.name = None  # Handle mkdtemp raising an exception
-            self.name = tempfile.mkdtemp(**kwargs)
-
-        def __enter__(self):
-            return self.name
-
-        def __exit__(self, exctype, excvalue, exctrace):
-            try:
-                shutil.rmtree(self.name, True)
-            except OSError:  # removal errors are not the only possible
-                pass
-            self.name = None
+# rely on compatibility behavior until mode considerations
+#  and exists_ok considerations are disentangled.
+# See https://github.com/pypa/setuptools/pull/1083#issuecomment-315168663
+needs_makedirs = (
+    six.PY2 or
+    (3, 4) <= sys.version_info < (3, 4, 1)
+)
+makedirs = _makedirs_31 if needs_makedirs else os.makedirs
